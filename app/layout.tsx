@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ReactNode } from "react";
+import { baseSepolia } from "viem/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 
 export const metadata = {
@@ -12,9 +13,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <MiniKitProvider
-          projectId="your-project-id" // à remplacer plus tard si besoin
+          chain={baseSepolia}
+          projectId="your-project-id" // à remplacer plus tard
           notificationProxyUrl="/api/notification"
-          chain="base-mainnet"
         >
           {children}
         </MiniKitProvider>
