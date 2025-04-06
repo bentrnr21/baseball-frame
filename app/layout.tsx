@@ -1,25 +1,21 @@
-import "./globals.css";
-import { ReactNode } from "react";
-import { baseSepolia } from "viem/chains";
-import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
+import './globals.css'
+import { Inter } from 'next/font/google'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: "BaseBall MiniApp",
-  description: "Arkanoid × Base × Farcaster",
-};
+  title: 'BaseBall MiniApp',
+  description: 'Break bricks and mint your Base score!',
+}
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body>
-        <MiniKitProvider
-          chain={baseSepolia}
-          projectId="your-project-id" // à remplacer plus tard
-          notificationProxyUrl="/api/notification"
-        >
-          {children}
-        </MiniKitProvider>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
-  );
+  )
 }
