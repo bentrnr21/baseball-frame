@@ -2,172 +2,164 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Brique = {
-  x: number;
-  y: number;
-  status: number;
-};
-
 export default function Home() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [briques, setBriques] = useState<Brique[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showWinMessage, setShowWinMessage] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    if (!canvas || !ctx) return;
+    // Raquette
+    let paddleX = canvas.width / 2 - 40;
+    const paddleWidth = 80;
+    const paddleHeight = 10;
 
-    // Initialisation
-    const ballRadius = 10;
+    // Balle
     let x = canvas.width / 2;
     let y = canvas.height - 30;
     let dx = 2;
     let dy = -2;
-    const paddleHeight = 10;
-    const paddleWidth = 75;
-    let paddleX = (canvas.width - paddleWidth) / 2;
-    let rightPressed = false;
-    let leftPressed = false;
+    const ballRadius = 8;
 
+    // Briques
     const brickRowCount = 3;
     const brickColumnCount = 5;
-    const brickWidth = 75;
+    const brickWidth = 60;
     const brickHeight = 20;
     const brickPadding = 10;
     const brickOffsetTop = 30;
-    const brickOffsetLeft = 30;
+    const brickOffsetLeft = 35;
 
-    let bricks: Brique[] = [];
+    const bricks: { x: number; y: number; status: number }[][] = [];
     for (let c = 0; c < brickColumnCount; c++) {
+      bricks[c] = [];
       for (let r = 0; r < brickRowCount; r++) {
-        bricks.push({
-          x: c * (brickWidth + brickPadding) + brickOffsetLeft,
-          y: r * (brickHeight + brickPadding) + brickOffsetTop,
-          status: 1,
-        });
+        bricks[c][r] = { x: 0, y: 0, status: 1 };
       }
     }
-    setBriques(bricks);
 
-    const drawBall = () => {
+    // Mouvement souris
+    function mouseMoveHandler(e: MouseEvent) {
+      const relativeX = e.clientX - canvas.getBoundingClientRect().left;
+      if (relativeX > 0 && relativeX < canvas.width) {
+        paddleX = relativeX - paddleWidth / 2;
+      }
+    }
+
+    document.addEventListener("mousemove", mouseMoveHandler);
+
+    function drawBall() {
       ctx.beginPath();
-      const img = new Image();
-      img.src = "/ball.png";
-      ctx.drawImage(img, x - ballRadius, y - ballRadius, 20, 20);
+      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#00D8FF"; // Base logo color
+      ctx.fill();
       ctx.closePath();
-    };
+    }
 
-    const drawPaddle = () => {
+    function drawPaddle() {
       ctx.beginPath();
       ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
       ctx.fillStyle = "#00D8FF";
       ctx.fill();
       ctx.closePath();
-    };
+    }
 
-    const drawBricks = () => {
-      bricks.forEach((brick) => {
-        if (brick.status === 1) {
-          ctx.beginPath();
-          ctx.rect(brick.x, brick.y, brickWidth, brickHeight);
-          ctx.fillStyle = "#00D8FF";
-          ctx.fill();
-          ctx.closePath();
+    function drawBricks() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          if (bricks[c][r].status === 1) {
+            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+            bricks[c][r].x = brickX;
+            bricks[c][r].y = brickY;
+            ctx.beginPath();
+            ctx.rect(brickX, brickY, brickWidth, brickHeight);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.closePath();
+          }
         }
-      });
-    };
+      }
+    }
 
-    const collisionDetection = () => {
-      bricks.forEach((brick) => {
-        if (brick.status === 1) {
-          if (
-            x > brick.x &&
-            x < brick.x + brickWidth &&
-            y > brick.y &&
-            y < brick.y + brickHeight
-          ) {
-            dy = -dy;
-            brick.status = 0;
-            setBriques([...bricks]);
-            if (bricks.every((b) => b.status === 0)) {
-              setShowWinMessage(true);
-              clearInterval(interval);
-              // mint ici ?
+    function collisionDetection() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          const b = bricks[c][r];
+          if (b.status === 1) {
+            if (
+              x > b.x &&
+              x < b.x + brickWidth &&
+              y > b.y &&
+              y < b.y + brickHeight
+            ) {
+              dy = -dy;
+              b.status = 0;
+
+              const allBricksCleared = bricks.every(column =>
+                column.every(b => b.status === 0)
+              );
+
+              if (allBricksCleared) {
+                setShowWinMessage(true);
+              }
             }
           }
         }
-      });
-    };
+      }
+    }
 
-    const draw = () => {
+    function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       drawBricks();
       drawBall();
       drawPaddle();
       collisionDetection();
 
+      // rebond mur
       if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
       if (y + dy < ballRadius) dy = -dy;
       else if (y + dy > canvas.height - ballRadius) {
-        if (x > paddleX && x < paddleX + paddleWidth) dy = -dy;
-        else document.location.reload();
+        if (x > paddleX && x < paddleX + paddleWidth) {
+          dy = -dy;
+        } else {
+          document.removeEventListener("mousemove", mouseMoveHandler);
+        }
       }
 
       x += dx;
       y += dy;
+      requestAnimationFrame(draw);
+    }
 
-      if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 7;
-      else if (leftPressed && paddleX > 0) paddleX -= 7;
-    };
+    draw();
 
-    const keyDownHandler = (e: KeyboardEvent) => {
-      if (e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
-      else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
-    };
-
-    const keyUpHandler = (e: KeyboardEvent) => {
-      if (e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
-      else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
-    };
-
-    document.addEventListener("keydown", keyDownHandler);
-    document.addEventListener("keyup", keyUpHandler);
-
-    const interval = setInterval(draw, 10);
-
-    return () => {
-      document.removeEventListener("keydown", keyDownHandler);
-      document.removeEventListener("keyup", keyUpHandler);
-      clearInterval(interval);
-    };
+    return () => document.removeEventListener("mousemove", mouseMoveHandler);
   }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ textAlign: "center", marginTop: "40px" }}>
       <canvas
         ref={canvasRef}
-        width={480}
-        height={320}
-        style={{ border: "2px solid #00D8FF", marginTop: "40px" }}
-      />
+        width="400"
+        height="300"
+        style={{ background: "#000", border: "2px solid #00D8FF" }}
+      ></canvas>
+
       {showWinMessage && (
         <div
           style={{
-            position: "absolute",
-            top: "120px",
-            backgroundColor: "black",
+            marginTop: "20px",
             color: "#00D8FF",
-            padding: "20px",
-            borderRadius: "15px",
             fontFamily: "monospace",
             fontSize: "20px",
-            textAlign: "center",
           }}
         >
-          🎉 YOU WIN 🎉<br />
-          🏆 NFT en cours de mint…
+          🎉 YOU WIN <br />
+          🧱 Mint en cours…
         </div>
       )}
     </div>
