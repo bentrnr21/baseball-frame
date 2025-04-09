@@ -3,12 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
 
-type Brick = {
-  x: number;
-  y: number;
-  status: number;
-};
-
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showWinMessage, setShowWinMessage] = useState(false);
@@ -65,7 +59,8 @@ export default function Home() {
     const brickOffsetTop = 30;
     const brickOffsetLeft = 35;
 
-    let bricks: Brick[][] = [];
+    // ✅ Typage propre pour Netlify (seul changement ici)
+    let bricks: { x: number; y: number; status: number }[][] = [];
 
     const initializeBricks = () => {
       bricks = [];
