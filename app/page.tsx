@@ -2,14 +2,18 @@
 
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: unknown;
   }
 }
 
 import { useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
 
-type Brick = { x: number; y: number; status: number };
+type Brick = {
+  x: number;
+  y: number;
+  status: number;
+};
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -102,10 +106,22 @@ export default function Home() {
 
     function drawBall() {
       if (ballImage.complete) {
-        ctx.drawImage(ballImage, ballX - ballRadius, ballY - ballRadius, ballRadius * 2, ballRadius * 2);
+        ctx.drawImage(
+          ballImage,
+          ballX - ballRadius,
+          ballY - ballRadius,
+          ballRadius * 2,
+          ballRadius * 2
+        );
       } else {
         ballImage.onload = () => {
-          ctx.drawImage(ballImage, ballX - ballRadius, ballY - ballRadius, ballRadius * 2, ballRadius * 2);
+          ctx.drawImage(
+            ballImage,
+            ballX - ballRadius,
+            ballY - ballRadius,
+            ballRadius * 2,
+            ballRadius * 2
+          );
         };
       }
     }
@@ -208,19 +224,21 @@ export default function Home() {
   }, []);
 
   return (
-    <div style={{
-      backgroundImage: "url('/BaseBall.png')",
-      backgroundSize: "contain",
-      backgroundRepeat: "no-repeat",
-      backgroundPosition: "center",
-      width: "680px",
-      height: "460px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      margin: "0 auto",
-      position: "relative"
-    }}>
+    <div
+      style={{
+        backgroundImage: "url('/BaseBall.png')",
+        backgroundSize: "contain",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        width: "680px",
+        height: "460px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: "0 auto",
+        position: "relative"
+      }}
+    >
       <canvas
         ref={canvasRef}
         style={{
@@ -229,19 +247,20 @@ export default function Home() {
         }}
       />
       {showWinMessage && (
-        <div style={{
-          position: "absolute",
-          top: "120px",
-          backgroundColor: "black",
-          color: "#00D8FF",
-          padding: "20px",
-          borderRadius: "15px",
-          fontFamily: "monospace",
-          fontSize: "20px",
-          textAlign: "center"
-        }}>
-          🎉 YOU WIN 🎉<br />
-          🏆 NFT en cours de mint…
+        <div
+          style={{
+            position: "absolute",
+            top: "120px",
+            backgroundColor: "black",
+            color: "#00D8FF",
+            padding: "20px",
+            borderRadius: "15px",
+            fontFamily: "monospace",
+            fontSize: "20px",
+            textAlign: "center"
+          }}
+        >
+          🎉 YOU WIN 🎉<br />🏆 NFT en cours de mint…
         </div>
       )}
     </div>
