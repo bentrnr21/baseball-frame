@@ -1,4 +1,5 @@
 "use client";
+
 declare global {
   interface Window {
     ethereum?: any;
@@ -7,6 +8,8 @@ declare global {
 
 import { useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
+
+type Brick = { x: number; y: number; status: number };
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -64,8 +67,7 @@ export default function Home() {
     const brickOffsetTop = 30;
     const brickOffsetLeft = 35;
 
-    // ✅ Typage propre pour Netlify (seul changement ici)
-    let bricks: { x: number; y: number; status: number }[][] = [];
+    let bricks: Brick[][] = [];
 
     const initializeBricks = () => {
       bricks = [];
