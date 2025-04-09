@@ -1,4 +1,9 @@
 "use client";
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 import { useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
