@@ -1,155 +1,205 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createFrame } from "@coinbase/onchainkit";
-import { contractAddress } from "../lib/contract";
-import { encodeFunctionData } from "viem";
-import { base } from "viem/chains";
-import Image from "next/image";
-import BaseBall from "public/BaseBall.png";
-import Ball from "public/ball.png";
+import { ethers } from "ethers";
+
+type Brick = {
+  x: number;
+  y: number;
+  status: number;
+};
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showWinMessage, setShowWinMessage] = useState(false);
+  const [hasMinted, setHasMinted] = useState(false);
+
+  const mintScoreNFT = async () => {
+    if (hasMinted) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        "0x9bc83E8A3255436f59943bB09A2f15925B477040",
+        ["function mint() public"],
+        signer
+      );
+      const tx = await contract.mint();
+      await tx.wait();
+      setHasMinted(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let x = canvas.width / 2;
-    let y = canvas.height - 30;
+    const canvasWidth = 500;
+    const canvasHeight = 340;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    let ballX = canvasWidth / 2;
+    let ballY = canvasHeight - 30;
     let dx = 2;
     let dy = -2;
-    const ballRadius = 10;
+    const ballRadius = 8;
+
     const paddleHeight = 10;
     const paddleWidth = 75;
-    let paddleX = (canvas.width - paddleWidth) / 2;
+    let paddleX = (canvasWidth - paddleWidth) / 2;
+
     let rightPressed = false;
     let leftPressed = false;
+
     const brickRowCount = 3;
-    const brickColumnCount = 5;
-    const brickWidth = 75;
-    const brickHeight = 20;
+    const brickColumnCount = 7;
+    const brickWidth = 55;
+    const brickHeight = 15;
     const brickPadding = 10;
     const brickOffsetTop = 30;
-    const brickOffsetLeft = 30;
-    let bricks: any[][] = [];
-    let bricksLeft = brickRowCount * brickColumnCount;
+    const brickOffsetLeft = 35;
 
-    for (let c = 0; c < brickColumnCount; c++) {
-      bricks[c] = [];
-      for (let r = 0; r < brickRowCount; r++) {
-        bricks[c][r] = { x: 0, y: 0, status: 1 };
-      }
-    }
+    let bricks: Brick[][] = [];
 
-    const drawBall = () => {
-      if (!ctx) return;
-      ctx.beginPath();
-      ctx.drawImage(Ball, x - ballRadius, y - ballRadius, 20, 20);
-      ctx.closePath();
-    };
-
-    const drawPaddle = () => {
-      if (!ctx) return;
-      ctx.beginPath();
-      ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
-      ctx.fillStyle = "#00D8FF";
-      ctx.fill();
-      ctx.closePath();
-    };
-
-    const drawBricks = () => {
+    const initializeBricks = () => {
+      bricks = [];
       for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c] = [];
         for (let r = 0; r < brickRowCount; r++) {
-          if (bricks[c][r].status === 1) {
-            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
-            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
-            bricks[c][r].x = brickX;
-            bricks[c][r].y = brickY;
-            ctx.beginPath();
-            ctx.rect(brickX, brickY, brickWidth, brickHeight);
-            ctx.fillStyle = "#00D8FF";
-            ctx.fill();
-            ctx.closePath();
-          }
+          bricks[c][r] = { x: 0, y: 0, status: 1 };
         }
       }
     };
 
-    const collisionDetection = () => {
+    initializeBricks();
+
+    const ballImage = new Image();
+    ballImage.src = "/ball.png";
+
+    function drawBricks() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          const b = bricks[c][r];
+          if (b.status === 1) {
+            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+            b.x = brickX;
+            b.y = brickY;
+            ctx.fillStyle = "#00D8FF";
+            ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
+          }
+        }
+      }
+    }
+
+    function drawBall() {
+      if (ballImage.complete) {
+        ctx.drawImage(ballImage, ballX - ballRadius, ballY - ballRadius, ballRadius * 2, ballRadius * 2);
+      } else {
+        ballImage.onload = () => {
+          ctx.drawImage(ballImage, ballX - ballRadius, ballY - ballRadius, ballRadius * 2, ballRadius * 2);
+        };
+      }
+    }
+
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.rect(paddleX, canvasHeight - paddleHeight - 5, paddleWidth, paddleHeight);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawLogo() {
+      ctx.font = "bold 18px Arial";
+      ctx.fillStyle = "#00D8FF";
+      ctx.textAlign = "center";
+      ctx.fillText("BaseBall", canvasWidth / 2, canvasHeight / 2 + 20);
+    }
+
+    function collisionDetection() {
       for (let c = 0; c < brickColumnCount; c++) {
         for (let r = 0; r < brickRowCount; r++) {
           const b = bricks[c][r];
           if (b.status === 1) {
             if (
-              x > b.x &&
-              x < b.x + brickWidth &&
-              y > b.y &&
-              y < b.y + brickHeight
+              ballX > b.x &&
+              ballX < b.x + brickWidth &&
+              ballY > b.y &&
+              ballY < b.y + brickHeight
             ) {
               dy = -dy;
               b.status = 0;
-              bricksLeft--;
-              if (bricksLeft === 0) {
-                setShowWinMessage(true);
-              }
+              checkWin();
             }
           }
         }
       }
-    };
+    }
 
-    const draw = () => {
-      if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function checkWin() {
+      const allCleared = bricks.every(column => column.every(b => b.status === 0));
+      if (allCleared) {
+        setShowWinMessage(true);
+        setTimeout(() => {
+          mintScoreNFT();
+        }, 1500);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+      const gradient = ctx.createLinearGradient(0, 0, canvasWidth, canvasHeight);
+      gradient.addColorStop(0, "#1e1e4e");
+      gradient.addColorStop(1, "#2c2c64");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
       drawBricks();
       drawBall();
       drawPaddle();
+      drawLogo();
       collisionDetection();
 
-      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-        dx = -dx;
-      }
-      if (y + dy < ballRadius) {
-        dy = -dy;
-      } else if (y + dy > canvas.height - ballRadius) {
-        if (x > paddleX && x < paddleX + paddleWidth) {
+      if (ballX + dx > canvasWidth - ballRadius || ballX + dx < ballRadius) dx = -dx;
+      if (ballY + dy < ballRadius) dy = -dy;
+      else if (ballY + dy > canvasHeight - ballRadius - paddleHeight) {
+        if (ballX > paddleX && ballX < paddleX + paddleWidth) {
           dy = -dy;
-        } else {
-          document.location.reload();
+        } else if (ballY + dy > canvasHeight) {
+          ballX = canvasWidth / 2;
+          ballY = canvasHeight - 30;
+          dx = 2;
+          dy = -2;
+          paddleX = (canvasWidth - paddleWidth) / 2;
+          initializeBricks();
         }
       }
 
-      x += dx;
-      y += dy;
+      ballX += dx;
+      ballY += dy;
 
-      if (rightPressed && paddleX < canvas.width - paddleWidth) {
-        paddleX += 7;
-      } else if (leftPressed && paddleX > 0) {
-        paddleX -= 7;
-      }
+      if (rightPressed && paddleX < canvasWidth - paddleWidth) paddleX += 5;
+      if (leftPressed && paddleX > 0) paddleX -= 5;
 
       requestAnimationFrame(draw);
-    };
+    }
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Right" || e.key === "ArrowRight") {
-        rightPressed = true;
-      } else if (e.key === "Left" || e.key === "ArrowLeft") {
-        leftPressed = true;
-      }
+    document.addEventListener("keydown", e => {
+      if (e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
+      else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
     });
 
-    document.addEventListener("keyup", (e) => {
-      if (e.key === "Right" || e.key === "ArrowRight") {
-        rightPressed = false;
-      } else if (e.key === "Left" || e.key === "ArrowLeft") {
-        leftPressed = false;
-      }
+    document.addEventListener("keyup", e => {
+      if (e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
+      else if (e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
     });
 
     draw();
@@ -157,16 +207,25 @@ export default function Home() {
 
   return (
     <div style={{
-      backgroundColor: "#000",
+      backgroundImage: "url('/BaseBall.png')",
+      backgroundSize: "contain",
+      backgroundRepeat: "no-repeat",
+      backgroundPosition: "center",
+      width: "680px",
+      height: "460px",
       display: "flex",
-      flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      height: "100vh",
+      margin: "0 auto",
+      position: "relative"
     }}>
-      <Image src={BaseBall} alt="Logo" width={200} height={80} style={{ marginBottom: "20px" }} />
-      <canvas ref={canvasRef} width={480} height={320} style={{ border: "2px solid #00D8FF" }} />
-
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "500px",
+          height: "340px"
+        }}
+      />
       {showWinMessage && (
         <div style={{
           position: "absolute",
@@ -177,10 +236,10 @@ export default function Home() {
           borderRadius: "15px",
           fontFamily: "monospace",
           fontSize: "20px",
-          textAlign: "center",
+          textAlign: "center"
         }}>
           🎉 YOU WIN 🎉<br />
-          🧱 NFT en cours de mint…
+          🏆 NFT en cours de mint…
         </div>
       )}
     </div>
